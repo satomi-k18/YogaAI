@@ -38,17 +38,60 @@ const improvementPoses = [
   {
     name: "猫のポーズ",
     description: "背中を丸めたり反らしたりして、背骨の柔軟性を高めます",
-    image: "assets/poses/cat.jpg"
+    image: "assets/poses/cat.jpg",
+    benefits: "猫背の改善、背中の緊張緩和",
+    instruction: "四つん這いになり、息を吐きながら背中を丸め、息を吸いながら背中を反らします。5-10回繰り返しましょう。"
   },
   {
     name: "子どものポーズ",
     description: "背中を伸ばし、肩と首の緊張を和らげます",
-    image: "assets/poses/child.jpg"
+    image: "assets/poses/child.jpg",
+    benefits: "肩こり解消、首の緊張緩和",
+    instruction: "膝をついて座り、前に手を伸ばして額を床につけます。肩の力を抜いて30秒間キープしましょう。"
   },
   {
     name: "コブラのポーズ",
     description: "胸を開き、背中の筋肉を強化します",
-    image: "assets/poses/cobra.jpg"
+    image: "assets/poses/cobra.jpg",
+    benefits: "姿勢改善、胸の開き",
+    instruction: "うつ伏せになり、手のひらを肩の下に置きます。息を吸いながら上半身を持ち上げ、胸を開きます。5回繰り返しましょう。"
+  }
+];
+
+// 姿勢スコアに基づくアドバイス
+const postureAdvice = [
+  {
+    minScore: 0,
+    maxScore: 40,
+    title: "要注意",
+    message: "姿勢が大きく崩れています。すぐに姿勢を正し、定期的に休憩を取りましょう。",
+    tips: [
+      "モニターの高さを目線と同じかやや下になるよう調整してください",
+      "椅子に深く腰掛け、背もたれにしっかり背中をつけましょう",
+      "30分ごとに立ち上がって軽くストレッチをしましょう"
+    ]
+  },
+  {
+    minScore: 41,
+    maxScore: 70,
+    title: "改善の余地あり",
+    message: "姿勢に改善の余地があります。意識して姿勢を正しましょう。",
+    tips: [
+      "肩の力を抜き、背筋を伸ばすよう意識してください",
+      "あごを引き、首を長く保つようにしましょう",
+      "1時間に一度は姿勢チェックを行いましょう"
+    ]
+  },
+  {
+    minScore: 71,
+    maxScore: 100,
+    title: "良好",
+    message: "姿勢は良好です。このまま維持しましょう。",
+    tips: [
+      "定期的なストレッチで柔軟性を維持しましょう",
+      "姿勢の良さを保つために背筋を鍛える運動を取り入れましょう",
+      "長時間同じ姿勢でいないよう、適度に動くことを心がけましょう"
+    ]
   }
 ];
 
@@ -337,19 +380,79 @@ function analyzePosture(landmarks) {
     scoreBarElement.className = 'bg-green-500 h-4 rounded-full';
   }
   
-  // Show improvement suggestions if score is poor
-  if (catBackScore >= 80) {
-    improvementSection.classList.remove('hidden');
-    updatePoseSuggestions();
-  } else {
-    improvementSection.classList.add('hidden');
+  // Get appropriate advice based on score
+  const advice = getAdviceForScore(catBackScore);
+  
+  // Update advice section
+  updateAdviceSection(advice);
+  
+  // Always show improvement section with appropriate content
+  improvementSection.classList.remove('hidden');
+  updatePoseSuggestions();
+}
+
+// Get appropriate advice based on score
+function getAdviceForScore(score) {
+  for (const advice of postureAdvice) {
+    if (score >= advice.minScore && score <= advice.maxScore) {
+      return advice;
+    }
   }
+  // Default advice if no range matches (shouldn't happen)
+  return postureAdvice[0];
+}
+
+// Update the advice section with appropriate content
+function updateAdviceSection(advice) {
+  if (!document.getElementById('advice-section')) {
+    // Create advice section if it doesn't exist
+    const adviceSection = document.createElement('div');
+    adviceSection.id = 'advice-section';
+    adviceSection.className = 'bg-white rounded-lg shadow-md p-6 mb-6';
+    
+    // Insert before improvement section
+    if (improvementSection && improvementSection.parentNode) {
+      improvementSection.parentNode.insertBefore(adviceSection, improvementSection);
+    }
+  }
+  
+  const adviceSection = document.getElementById('advice-section');
+  
+  // Set the content
+  let statusClass = 'text-green-600';
+  if (catBackScore < 50) {
+    statusClass = 'text-red-600';
+  } else if (catBackScore < 80) {
+    statusClass = 'text-yellow-600';
+  }
+  
+  adviceSection.innerHTML = `
+    <h2 class="text-xl font-semibold mb-4 text-indigo-600">姿勢アドバイス</h2>
+    <div class="mb-4">
+      <div class="flex items-center mb-2">
+        <span class="${statusClass} font-bold text-lg mr-2">${advice.title}</span>
+        <span class="text-gray-700">${advice.message}</span>
+      </div>
+    </div>
+    <div class="bg-indigo-50 p-4 rounded-lg">
+      <h3 class="font-semibold text-indigo-700 mb-2">改善のヒント:</h3>
+      <ul class="list-disc pl-5 text-gray-700">
+        ${advice.tips.map(tip => `<li>${tip}</li>`).join('')}
+      </ul>
+    </div>
+  `;
 }
 
 // Update pose suggestion cards
 function updatePoseSuggestions() {
   // Clear existing suggestions
   poseSuggestions.innerHTML = '';
+  
+  // Update title based on score
+  const improvementTitle = document.querySelector('#improvement-section h2');
+  if (improvementTitle) {
+    improvementTitle.textContent = catBackScore >= 80 ? '改善ポーズの提案' : 'おすすめヨガポーズ';
+  }
   
   // Add new suggestion cards
   improvementPoses.forEach(pose => {
@@ -363,8 +466,15 @@ function updatePoseSuggestions() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
           </svg>
         </div>
-        <h3 class="font-semibold text-indigo-700">${pose.name}</h3>
-        <p class="text-sm text-gray-600 mt-1">${pose.description}</p>
+        <div class="bg-indigo-600 text-white py-1 px-2 rounded-full text-xs font-semibold inline-block mb-2">
+          ${pose.benefits}
+        </div>
+        <h3 class="font-semibold text-indigo-700 text-lg">${pose.name}</h3>
+        <p class="text-sm text-gray-600 mt-1 mb-3">${pose.description}</p>
+        <div class="border-t border-indigo-100 pt-3 mt-2">
+          <h4 class="font-semibold text-indigo-600 text-sm mb-1">実践方法:</h4>
+          <p class="text-xs text-gray-500">${pose.instruction}</p>
+        </div>
       </div>
     `;
     
