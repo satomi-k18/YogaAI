@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <!-- 結果保存用のhtml2canvasライブラリを追加 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -33,6 +35,13 @@
                             <p class="mt-2">カメラ初期化中...</p>
                         </div>
                     </div>
+                    <button id="capture-btn" class="absolute bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        写真撮影
+                    </button>
                 </div>
             </div>
 
@@ -82,8 +91,82 @@
             </div>
         </main>
 
+        <!-- 撮影結果セクション -->
+        <div id="results-section" class="mt-12 hidden">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-6 text-center">姿勢分析結果</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 撮影画像 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">撮影画像</h3>
+                    <div class="relative aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                        <img id="captured-image" class="w-full h-full object-contain" alt="撮影された姿勢" />
+                    </div>
+                    <div class="mt-4 text-center">
+                        <p class="text-gray-500 text-sm">撮影日時: <span id="capture-date">--</span></p>
+                    </div>
+                </div>
+                
+                <!-- 分析結果 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">分析結果</h3>
+                    
+                    <!-- スコア表示 -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-gray-700">猫背スコア:</span>
+                            <div class="flex items-center">
+                                <div id="result-score" class="text-2xl font-bold">--</div>
+                                <span class="ml-1 text-gray-500">/ 100</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div id="result-score-bar" class="bg-indigo-600 h-4 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 角度情報 -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="bg-gray-50 p-3 rounded text-center">
+                            <div class="text-sm text-gray-500">首前傾角</div>
+                            <div id="result-neck-angle" class="font-semibold">--°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded text-center">
+                            <div class="text-sm text-gray-500">肩左右差</div>
+                            <div id="result-shoulder-angle" class="font-semibold">--°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded text-center">
+                            <div class="text-sm text-gray-500">背骨湾曲度</div>
+                            <div id="result-spine-curve" class="font-semibold">--°</div>
+                        </div>
+                    </div>
+                    
+                    <!-- アドバイス -->
+                    <div id="result-advice" class="bg-indigo-50 p-4 rounded-lg">
+                        <!-- アドバイス内容がJSで動的に挿入されます -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ボタン -->
+            <div class="mt-8 flex justify-center space-x-4">
+                <button id="save-result-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                    </svg>
+                    結果を保存
+                </button>
+                <button id="new-capture-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                    </svg>
+                    新しく撮影
+                </button>
+            </div>
+        </div>
+
         <footer class="mt-12 text-center text-gray-500 text-sm">
-            <p>© 2025 YogaAI Posture Analyzer</p>
+            <p>&copy; 2025 YogaAI Posture Analyzer</p>
         </footer>
     </div>
 

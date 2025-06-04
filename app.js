@@ -13,6 +13,30 @@ let spineCurveElement;
 let fpsElement;
 let improvementSection;
 let poseSuggestions;
+let improvementTitle;
+let captureBtn;
+let resultsSection;
+let capturedImage;
+let captureDate;
+let resultScore;
+let resultScoreBar;
+let resultNeckAngle;
+let resultShoulderAngle;
+let resultSpineCurve;
+let resultAdvice;
+let saveResultBtn;
+let newCaptureBtn;
+
+// Global variables
+let pose;
+let camera;
+let lastFrameTime = 0;
+let frameCount = 0;
+let fps = 0;
+let poseData = null;
+let catBackScore = 0;
+let currentLandmarks = null;
+let currentAdvice = null;
 
 // Wait for DOM to be fully loaded before accessing elements
 document.addEventListener('DOMContentLoaded', () => {
@@ -28,13 +52,44 @@ document.addEventListener('DOMContentLoaded', () => {
   fpsElement = document.getElementById('fps');
   improvementSection = document.getElementById('improvement-section');
   poseSuggestions = document.getElementById('pose-suggestions');
+  improvementTitle = document.querySelector('#improvement-section h2');
+  
+  // 写真撮影関連の要素
+  captureBtn = document.getElementById('capture-btn');
+  resultsSection = document.getElementById('results-section');
+  capturedImage = document.getElementById('captured-image');
+  captureDate = document.getElementById('capture-date');
+  resultScore = document.getElementById('result-score');
+  resultScoreBar = document.getElementById('result-score-bar');
+  resultNeckAngle = document.getElementById('result-neck-angle');
+  resultShoulderAngle = document.getElementById('result-shoulder-angle');
+  resultSpineCurve = document.getElementById('result-spine-curve');
+  resultAdvice = document.getElementById('result-advice');
+  saveResultBtn = document.getElementById('save-result-btn');
+  newCaptureBtn = document.getElementById('new-capture-btn');
+  
+  // イベントリスナーを設定
+  if (captureBtn) {
+    captureBtn.addEventListener('click', captureImage);
+  }
+  
+  if (newCaptureBtn) {
+    newCaptureBtn.addEventListener('click', () => {
+      resultsSection.classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+  
+  if (saveResultBtn) {
+    saveResultBtn.addEventListener('click', saveResult);
+  }
   
   // Initialize the application after DOM is loaded
-  init();
+  initCamera();
 });
 
 // Pose improvement suggestions
-const improvementPoses = [
+improvementPoses = [
   {
     name: "猫のポーズ",
     description: "背中を丸めたり反らしたりして、背骨の柔軟性を高めます",
@@ -95,17 +150,8 @@ const postureAdvice = [
   }
 ];
 
-// Mediapipe Pose configuration
-let pose;
-let camera;
-let lastFrameTime = 0;
-let frameCount = 0;
-let fps = 0;
-let poseData = null;
-let catBackScore = 0;
-
 // Initialize the application
-async function init() {
+async function initCamera() {
   console.log('Initializing application...');
   
   // Set up canvas size to match video
@@ -118,15 +164,7 @@ async function init() {
       throw new Error('Browser does not support getUserMedia API');
     }
     
-    // Check for available devices
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    
-    if (videoDevices.length === 0) {
-      throw new Error('No video devices found');
-    }
-    
-    console.log(`Found ${videoDevices.length} video devices`);
+    console.log('Checking for video devices...');
     
     // Get user media directly first to ensure permissions
     const constraints = {
@@ -138,12 +176,14 @@ async function init() {
     };
     
     // Try to get user media directly first
+    console.log('Requesting camera access...');
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     videoElement.srcObject = stream;
     
     // Wait for video to be ready
     await new Promise((resolve) => {
       videoElement.onloadedmetadata = () => {
+        console.log('Video metadata loaded');
         videoElement.play();
         resolve();
       };
@@ -152,6 +192,7 @@ async function init() {
     console.log('Video stream initialized');
     
     // Initialize Mediapipe Pose
+    console.log('Initializing MediaPipe Pose...');
     pose = new Pose({
       locateFile: (file) => {
         return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
@@ -171,6 +212,7 @@ async function init() {
     console.log('Pose model initialized');
 
     // Initialize camera with the stream we already have
+    console.log('Starting camera with MediaPipe...');
     camera = new Camera(videoElement, {
       onFrame: async () => {
         try {
@@ -185,6 +227,7 @@ async function init() {
       height: 480
     });
 
+    console.log('Starting camera...');
     await camera.start();
     console.log('Camera started successfully');
     loadingIndicator.style.display = 'none';
@@ -213,7 +256,7 @@ async function init() {
       loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ再初期化中...</p></div>';
       try {
         // Try initialization again
-        init();
+        initCamera();
       } catch (err) {
         console.error('Retry failed:', err);
         loadingIndicator.innerHTML = '<p class="text-red-500">カメラの起動に再度失敗しました。<br>ページを再読み込みしてお試しください。</p>';
@@ -301,6 +344,9 @@ function calculateHorizontalAngle(a, b) {
 function analyzePosture(landmarks) {
   if (!landmarks || landmarks.length < 33) return;
   
+  // 現在のランドマークを保存
+  currentLandmarks = landmarks;
+  
   // Extract key landmarks
   const nose = landmarks[0];
   const leftEye = landmarks[2];
@@ -382,6 +428,7 @@ function analyzePosture(landmarks) {
   
   // Get appropriate advice based on score
   const advice = getAdviceForScore(catBackScore);
+  currentAdvice = advice; // アドバイスを保存
   
   // Update advice section
   updateAdviceSection(advice);
@@ -449,7 +496,6 @@ function updatePoseSuggestions() {
   poseSuggestions.innerHTML = '';
   
   // Update title based on score
-  const improvementTitle = document.querySelector('#improvement-section h2');
   if (improvementTitle) {
     improvementTitle.textContent = catBackScore >= 80 ? '改善ポーズの提案' : 'おすすめヨガポーズ';
   }
@@ -482,4 +528,117 @@ function updatePoseSuggestions() {
   });
 }
 
-// The application is now initialized in the DOMContentLoaded event at the top of the file
+// 写真撮影機能
+function captureImage() {
+  if (!currentLandmarks || !currentAdvice) return;
+  
+  try {
+    // 現在のビデオフレームをキャプチャ
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = videoElement.videoWidth;
+    tempCanvas.height = videoElement.videoHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // ビデオフレームを描画
+    tempCtx.drawImage(videoElement, 0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // ランドマークを描画
+    tempCtx.save();
+    if (window.drawConnectors && window.POSE_CONNECTIONS) {
+      drawConnectors(tempCtx, currentLandmarks, POSE_CONNECTIONS,
+        {color: '#00FF00', lineWidth: 2});
+      drawLandmarks(tempCtx, currentLandmarks,
+        {color: '#FF0000', lineWidth: 1, radius: 3});
+    }
+    tempCtx.restore();
+    
+    // 画像をキャプチャ画像要素に設定
+    capturedImage.src = tempCanvas.toDataURL('image/png');
+    
+    // 日時を設定
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ja-JP');
+    const timeStr = now.toLocaleTimeString('ja-JP');
+    captureDate.textContent = `${dateStr} ${timeStr}`;
+    
+    // スコアと角度を設定
+    resultScore.textContent = catBackScore;
+    resultScoreBar.style.width = `${catBackScore}%`;
+    
+    // スコアに応じた色を設定
+    if (catBackScore < 50) {
+      resultScoreBar.className = 'bg-red-500 h-4 rounded-full';
+    } else if (catBackScore < 80) {
+      resultScoreBar.className = 'bg-yellow-500 h-4 rounded-full';
+    } else {
+      resultScoreBar.className = 'bg-green-500 h-4 rounded-full';
+    }
+    
+    // 角度情報を設定
+    resultNeckAngle.textContent = neckAngleElement.textContent;
+    resultShoulderAngle.textContent = shoulderAngleElement.textContent;
+    resultSpineCurve.textContent = spineCurveElement.textContent;
+    
+    // アドバイスを設定
+    resultAdvice.innerHTML = '';
+    const adviceCard = document.createElement('div');
+    adviceCard.className = 'bg-white rounded-lg shadow-md p-4';
+    
+    let adviceColor = 'text-red-600';
+    if (catBackScore >= 41 && catBackScore <= 70) {
+      adviceColor = 'text-yellow-600';
+    } else if (catBackScore > 70) {
+      adviceColor = 'text-green-600';
+    }
+    
+    adviceCard.innerHTML = `
+      <h3 class="text-xl font-bold ${adviceColor} mb-2">${currentAdvice.title}</h3>
+      <p class="text-gray-700 mb-3">${currentAdvice.message}</p>
+      <ul class="list-disc pl-5">
+        ${currentAdvice.tips.map(tip => `<li class="text-gray-600 mb-1">${tip}</li>`).join('')}
+      </ul>
+    `;
+    
+    resultAdvice.appendChild(adviceCard);
+    
+    // 結果セクションを表示
+    resultsSection.classList.remove('hidden');
+    
+    // 結果セクションまでスクロール
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
+    
+  } catch (error) {
+    console.error('写真のキャプチャ中にエラーが発生しました:', error);
+    alert('写真のキャプチャに失敗しました。もう一度お試しください。');
+  }
+}
+
+// 結果を画像として保存する機能
+async function saveResult() {
+  try {
+    // html2canvasを使用して結果セクションをキャプチャ
+    if (typeof html2canvas !== 'function') {
+      throw new Error('html2canvas がロードされていません');
+    }
+    
+    const canvas = await html2canvas(resultsSection, {
+      backgroundColor: '#1a202c', // 背景色を設定
+      scale: 2, // 高解像度でキャプチャ
+      logging: false, // ログを無効化
+      useCORS: true // クロスオリジン画像を許可
+    });
+    
+    // キャンバスをデータURLに変換
+    const dataUrl = canvas.toDataURL('image/png');
+    
+    // ダウンロードリンクを作成
+    const link = document.createElement('a');
+    link.download = `yoga-ai-posture-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
+    link.href = dataUrl;
+    link.click();
+    
+  } catch (error) {
+    console.error('結果の保存中にエラーが発生しました:', error);
+    alert(`結果の保存に失敗しました: ${error.message}`);
+  }
+}
