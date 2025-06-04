@@ -1,0 +1,44 @@
+/* Custom styles for YogaAI Posture Analyzer */
+
+/* Video container styling */
+#webcam {
+  transform: scaleX(-1); /* Mirror the webcam feed */
+}
+
+#output-canvas {
+  transform: scaleX(-1); /* Mirror the canvas overlay */
+}
+
+/* Pose card styling */
+.pose-card {
+  transition: all 0.3s ease;
+}
+
+.pose-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Score indicator animations */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.score-alert {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .pose-suggestions {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}

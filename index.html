@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YogaAI Posture Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675469404/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675469404/camera_utils.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-700">YogaAI Posture Analyzer</h1>
+            <p class="text-gray-600">リアルタイムで姿勢を分析し、改善ポーズを提案します</p>
+        </header>
+
+        <main class="flex flex-col md:flex-row gap-6">
+            <!-- 左カラム: カメラ映像 + スケルトン -->
+            <div class="w-full md:w-1/2 bg-white rounded-lg shadow-md p-4">
+                <h2 class="text-xl font-semibold mb-4 text-indigo-600">姿勢分析</h2>
+                <div class="relative aspect-video">
+                    <video id="webcam" class="w-full h-full object-cover rounded" autoplay playsinline></video>
+                    <canvas id="output-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                    <div id="loading-indicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-white">
+                        <div class="text-center">
+                            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+                            <p class="mt-2">カメラ初期化中...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右カラム: 数値結果 & 改善提案 -->
+            <div class="w-full md:w-1/2 flex flex-col gap-6">
+                <!-- 姿勢スコア -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-600">姿勢スコア</h2>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-700">猫背スコア:</span>
+                        <div class="flex items-center">
+                            <div id="cat-back-score" class="text-2xl font-bold">--</div>
+                            <span class="ml-1 text-gray-500">/ 100</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4">
+                        <div id="score-bar" class="bg-indigo-600 h-4 rounded-full" style="width: 0%"></div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="text-sm text-gray-500">首前傾角</div>
+                            <div id="neck-angle" class="font-semibold">--°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="text-sm text-gray-500">肩左右差</div>
+                            <div id="shoulder-angle" class="font-semibold">--°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="text-sm text-gray-500">背骨湾曲度</div>
+                            <div id="spine-curve" class="font-semibold">--°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded">
+                            <div class="text-sm text-gray-500">フレームレート</div>
+                            <div id="fps" class="font-semibold">-- FPS</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 改善提案 -->
+                <div id="improvement-section" class="bg-white rounded-lg shadow-md p-6 hidden">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-600">改善ポーズの提案</h2>
+                    <p class="text-gray-700 mb-4">姿勢改善のために以下のポーズを試してみましょう:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="pose-suggestions">
+                        <!-- ポーズカードがここに動的に挿入されます -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-12 text-center text-gray-500 text-sm">
+            <p>© 2025 YogaAI Posture Analyzer</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
