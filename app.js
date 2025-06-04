@@ -5,16 +5,10 @@ let videoElement;
 let canvasElement;
 let canvasCtx;
 let loadingIndicator;
-let catBackScoreElement;
-let scoreBarElement;
-let neckAngleElement;
-let shoulderAngleElement;
-let spineCurveElement;
-let fpsElement;
-let improvementSection;
-let poseSuggestions;
-let improvementTitle;
 let captureBtn;
+let analyze360Btn;
+let newCaptureBtn;
+let saveResultBtn;
 let resultsSection;
 let capturedImage;
 let captureDate;
@@ -24,8 +18,37 @@ let resultNeckAngle;
 let resultShoulderAngle;
 let resultSpineCurve;
 let resultAdvice;
-let saveResultBtn;
-let newCaptureBtn;
+let improvementSection;
+let improvementTitle;
+let improvementCards;
+let neckAngleElement;
+let shoulderAngleElement;
+let spineCurveElement;
+let scoreElement;
+let scoreBar;
+let adviceElement;
+
+// 360度分析用の要素
+let analysis360Section;
+let analysisInstruction;
+let positionIndicator;
+let countdownElement;
+let positionSteps;
+let analysisResults;
+let totalScoreElement;
+let totalScoreBar;
+let totalAdviceElement;
+let frontScoreElement;
+let frontScoreBar;
+let rightScoreElement;
+let rightScoreBar;
+let backScoreElement;
+let backScoreBar;
+let leftScoreElement;
+let leftScoreBar;
+let detailedAdviceElement;
+let restartAnalysisBtn;
+let saveAnalysisBtn;
 
 // Global variables
 let pose;
@@ -37,6 +60,31 @@ let poseData = null;
 let catBackScore = 0;
 let currentLandmarks = null;
 let currentAdvice = null;
+
+// 360度分析用の変数
+let isAnalyzing360 = false;
+let currentPosition = 0;
+let countdownInterval;
+let countdownValue = 10;
+let analysisPositions = ['正面', '右側面', '背面', '左側面', '正面（確認）'];
+let positionScores = {
+  front: 0,
+  right: 0,
+  back: 0,
+  left: 0
+};
+let positionLandmarks = {
+  front: null,
+  right: null,
+  back: null,
+  left: null
+};
+let positionAdvice = {
+  front: null,
+  right: null,
+  back: null,
+  left: null
+};
 
 // Wait for DOM to be fully loaded before accessing elements
 document.addEventListener('DOMContentLoaded', () => {
@@ -68,11 +116,36 @@ document.addEventListener('DOMContentLoaded', () => {
   saveResultBtn = document.getElementById('save-result-btn');
   newCaptureBtn = document.getElementById('new-capture-btn');
   
+  // 360度分析用のDOM要素初期化
+  analyze360Btn = document.getElementById('analyze-360-btn');
+  analysis360Section = document.getElementById('analysis-360-section');
+  analysisInstruction = document.getElementById('analysis-instruction');
+  positionIndicator = document.getElementById('position-indicator');
+  countdownElement = document.getElementById('countdown');
+  positionSteps = document.querySelectorAll('.position-step');
+  analysisResults = document.getElementById('analysis-results');
+  totalScoreElement = document.getElementById('total-score');
+  totalScoreBar = document.getElementById('total-score-bar');
+  totalAdviceElement = document.getElementById('total-advice');
+  frontScoreElement = document.getElementById('front-score');
+  frontScoreBar = document.getElementById('front-score-bar');
+  rightScoreElement = document.getElementById('right-score');
+  rightScoreBar = document.getElementById('right-score-bar');
+  backScoreElement = document.getElementById('back-score');
+  backScoreBar = document.getElementById('back-score-bar');
+  leftScoreElement = document.getElementById('left-score');
+  leftScoreBar = document.getElementById('left-score-bar');
+  detailedAdviceElement = document.getElementById('detailed-advice');
+  restartAnalysisBtn = document.getElementById('restart-analysis-btn');
+  saveAnalysisBtn = document.getElementById('save-analysis-btn');
+  
   // イベントリスナーを設定
   if (captureBtn) {
     captureBtn.addEventListener('click', captureImage);
   }
-  
+  if (saveResultBtn) {
+    saveResultBtn.addEventListener('click', saveResult);
+  }
   if (newCaptureBtn) {
     newCaptureBtn.addEventListener('click', () => {
       resultsSection.classList.add('hidden');
@@ -80,8 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  if (saveResultBtn) {
-    saveResultBtn.addEventListener('click', saveResult);
+  // 360度分析ボタンのイベントリスナー
+  if (analyze360Btn) {
+    analyze360Btn.addEventListener('click', start360Analysis);
+  }
+  if (restartAnalysisBtn) {
+    restartAnalysisBtn.addEventListener('click', start360Analysis);
+  }
+  if (saveAnalysisBtn) {
+    saveAnalysisBtn.addEventListener('click', save360AnalysisResult);
   }
   
   // Initialize the application after DOM is loaded
@@ -281,45 +361,50 @@ async function initCamera() {
 
 // Process pose detection results
 function onResults(results) {
-  if (!canvasCtx || !canvasElement || !fpsElement) return;
+  if (!canvasCtx || !canvasElement) return;
   
   try {
-    // Calculate FPS
-    const now = performance.now();
-    frameCount++;
-    
-    if (now - lastFrameTime >= 1000) {
-      fps = Math.round(frameCount * 1000 / (now - lastFrameTime));
-      fpsElement.textContent = `${fps} FPS`;
-      frameCount = 0;
-      lastFrameTime = now;
+    // Hide loading indicator once we get results
+    if (loadingIndicator) {
+      loadingIndicator.style.display = 'none';
     }
-
+    
+    // Calculate FPS if element exists
+    if (fpsElement) {
+      const now = performance.now();
+      frameCount++;
+      
+      if (now - lastFrameTime >= 1000) {
+        fps = Math.round(frameCount * 1000 / (now - lastFrameTime));
+        fpsElement.textContent = `${fps} FPS`;
+        frameCount = 0;
+        lastFrameTime = now;
+      }
+    }
+    
     // Clear canvas
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-    // Draw the pose landmarks
+    
+    // Draw video frame
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw pose landmarks if detected
     if (results.poseLandmarks) {
-      poseData = results.poseLandmarks;
+      // Update current landmarks for capture
+      currentLandmarks = results.poseLandmarks;
       
-      // Draw the pose skeleton
-      canvasCtx.save();
-      canvasCtx.drawImage(
-        results.image, 0, 0, canvasElement.width, canvasElement.height);
-      
-      // Draw connectors and landmarks
+      // Draw connectors
       if (window.drawConnectors && window.POSE_CONNECTIONS) {
         drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
           {color: '#00FF00', lineWidth: 2});
         drawLandmarks(canvasCtx, results.poseLandmarks,
           {color: '#FF0000', lineWidth: 1, radius: 3});
-      } else {
-        console.warn('drawConnectors or POSE_CONNECTIONS not available');
       }
-      canvasCtx.restore();
       
       // Analyze posture
       analyzePosture(results.poseLandmarks);
+    } else {
+      currentLandmarks = null;
     }
   } catch (error) {
     console.error('Error in onResults:', error);
@@ -639,6 +724,290 @@ async function saveResult() {
     
   } catch (error) {
     console.error('結果の保存中にエラーが発生しました:', error);
+    alert(`結果の保存に失敗しました: ${error.message}`);
+  }
+}
+
+// 360度分析を開始する関数
+async function start360Analysis() {
+  // 他のセクションを隠す
+  resultsSection.classList.add('hidden');
+  
+  // 分析セクションを表示
+  analysis360Section.classList.remove('hidden');
+  analysisInstruction.classList.remove('hidden');
+  analysisResults.classList.add('hidden');
+  
+  // 変数の初期化
+  isAnalyzing360 = true;
+  currentPosition = 0;
+  countdownValue = 10;
+  positionScores = { front: 0, right: 0, back: 0, left: 0 };
+  positionLandmarks = { front: null, right: null, back: null, left: null };
+  positionAdvice = { front: null, right: null, back: null, left: null };
+  
+  // カメラが停止していれば再起動
+  if (camera && !camera.isRunning) {
+    try {
+      // ローディング表示
+      loadingIndicator.style.display = 'block';
+      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ再起動中...</p></div>';
+      
+      // カメラ再起動
+      await camera.start();
+      console.log('カメラ再起動成功');
+      loadingIndicator.style.display = 'none';
+    } catch (error) {
+      console.error('カメラ再起動失敗:', error);
+      loadingIndicator.innerHTML = `
+        <div class="text-center">
+          <p class="text-red-500 font-bold mb-2">カメラの再起動に失敗しました</p>
+          <p class="text-white mb-4">エラー: ${error.message}</p>
+          <button id="retry-camera" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+            再試行する
+          </button>
+        </div>
+      `;
+      
+      // 再試行ボタンの機能を追加
+      document.getElementById('retry-camera')?.addEventListener('click', initCamera);
+      return;
+    }
+  }
+  
+  // UI更新
+  updatePositionUI();
+  
+  // カウントダウン開始
+  startCountdown();
+  
+  // 分析セクションまでスクロール
+  analysis360Section.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ポジションに応じたUIを更新する関数
+function updatePositionUI() {
+  // ポジションインジケータの更新
+  positionIndicator.textContent = `${analysisPositions[currentPosition]}を向いてください`;
+  countdownElement.textContent = countdownValue;
+  
+  // ステップインジケータの更新
+  positionSteps.forEach((step, index) => {
+    if (index === currentPosition) {
+      step.classList.add('bg-indigo-100');
+      step.classList.remove('bg-gray-100');
+      step.querySelector('svg').classList.add('text-indigo-600');
+      step.querySelector('svg').classList.remove('text-gray-400');
+      step.classList.add('active-position');
+    } else {
+      step.classList.remove('bg-indigo-100');
+      step.classList.add('bg-gray-100');
+      step.querySelector('svg').classList.remove('text-indigo-600');
+      step.querySelector('svg').classList.add('text-gray-400');
+      step.classList.remove('active-position');
+    }
+  });
+}
+
+// カウントダウンを開始する関数
+function startCountdown() {
+  // 既存のカウントダウンをクリア
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+  }
+  
+  countdownInterval = setInterval(() => {
+    countdownValue--;
+    countdownElement.textContent = countdownValue;
+    
+    if (countdownValue <= 0) {
+      clearInterval(countdownInterval);
+      capturePositionData();
+    }
+  }, 1000);
+}
+
+// 現在のポジションのデータをキャプチャする関数
+function capturePositionData() {
+  if (!currentLandmarks) {
+    // ランドマークが検出されていない場合は少し待ってリトライ
+    setTimeout(capturePositionData, 500);
+    return;
+  }
+  
+  // 現在のポジションに応じてデータを保存
+  switch(currentPosition) {
+    case 0: // 正面
+      positionLandmarks.front = [...currentLandmarks];
+      positionScores.front = catBackScore;
+      positionAdvice.front = currentAdvice;
+      break;
+    case 1: // 右側面
+      positionLandmarks.right = [...currentLandmarks];
+      positionScores.right = catBackScore;
+      positionAdvice.right = currentAdvice;
+      break;
+    case 2: // 背面
+      positionLandmarks.back = [...currentLandmarks];
+      positionScores.back = catBackScore;
+      positionAdvice.back = currentAdvice;
+      break;
+    case 3: // 左側面
+      positionLandmarks.left = [...currentLandmarks];
+      positionScores.left = catBackScore;
+      positionAdvice.left = currentAdvice;
+      break;
+    case 4: // 完了
+      finishAnalysis();
+      return;
+  }
+  
+  // 次のポジションへ
+  currentPosition++;
+  countdownValue = 10;
+  updatePositionUI();
+  startCountdown();
+}
+
+// 分析を完了し結果を表示する関数
+function finishAnalysis() {
+  // 分析モードを終了
+  isAnalyzing360 = false;
+  
+  // カメラを一時停止（後で再開できるように）
+  if (camera) {
+    camera.stop();
+  }
+  
+  // 指示部分を隠し、結果部分を表示
+  analysisInstruction.classList.add('hidden');
+  analysisResults.classList.remove('hidden');
+  
+  // 総合スコアを計算（各方向の平均）
+  const totalScore = Math.round(
+    (positionScores.front + positionScores.right + positionScores.back + positionScores.left) / 4
+  );
+  
+  // UI更新
+  updateAnalysisResultUI(totalScore);
+}
+
+// 分析結果のUIを更新する関数
+function updateAnalysisResultUI(totalScore) {
+  // 総合スコア
+  totalScoreElement.textContent = totalScore;
+  totalScoreBar.style.width = `${totalScore}%`;
+  
+  // スコアに応じた色を設定
+  let scoreColor = 'bg-red-500';
+  if (totalScore >= 71) {
+    scoreColor = 'bg-green-500';
+  } else if (totalScore >= 41) {
+    scoreColor = 'bg-yellow-500';
+  }
+  totalScoreBar.className = `${scoreColor} h-4 rounded-full`;
+  
+  // 方向別スコア
+  frontScoreElement.textContent = positionScores.front;
+  frontScoreBar.style.width = `${positionScores.front}%`;
+  frontScoreBar.className = `bg-indigo-600 h-2 rounded-full`;
+  
+  rightScoreElement.textContent = positionScores.right;
+  rightScoreBar.style.width = `${positionScores.right}%`;
+  rightScoreBar.className = `bg-indigo-600 h-2 rounded-full`;
+  
+  backScoreElement.textContent = positionScores.back;
+  backScoreBar.style.width = `${positionScores.back}%`;
+  backScoreBar.className = `bg-indigo-600 h-2 rounded-full`;
+  
+  leftScoreElement.textContent = positionScores.left;
+  leftScoreBar.style.width = `${positionScores.left}%`;
+  leftScoreBar.className = `bg-indigo-600 h-2 rounded-full`;
+  
+  // 総合アドバイス
+  const advice = getAdviceForScore(totalScore);
+  totalAdviceElement.innerHTML = `
+    <h4 class="font-semibold mb-2">${advice.title}</h4>
+    <p>${advice.message}</p>
+  `;
+  
+  // 詳細アドバイス
+  detailedAdviceElement.innerHTML = '';
+  
+  // 正面のアドバイス
+  const frontAdviceCard = createAdviceCard('正面', positionAdvice.front);
+  detailedAdviceElement.appendChild(frontAdviceCard);
+  
+  // 側面のアドバイス
+  const sideAdviceCard = createAdviceCard('側面', positionAdvice.right);
+  detailedAdviceElement.appendChild(sideAdviceCard);
+  
+  // 背面のアドバイス
+  const backAdviceCard = createAdviceCard('背面', positionAdvice.back);
+  detailedAdviceElement.appendChild(backAdviceCard);
+  
+  // 左側面のアドバイス
+  const leftAdviceCard = createAdviceCard('左側面', positionAdvice.left);
+  detailedAdviceElement.appendChild(leftAdviceCard);
+}
+
+// アドバイスカードを作成する関数
+function createAdviceCard(title, advice) {
+  const card = document.createElement('div');
+  card.className = 'bg-white rounded-lg shadow-sm p-4 border border-gray-100';
+  
+  if (!advice) {
+    card.innerHTML = `
+      <h4 class="font-semibold text-gray-700 mb-2">${title}</h4>
+      <p class="text-gray-500">データがありません</p>
+    `;
+    return card;
+  }
+  
+  let tipsList = '';
+  if (advice.tips && advice.tips.length > 0) {
+    tipsList = `
+      <ul class="list-disc pl-5 mt-2">
+        ${advice.tips.map(tip => `<li class="text-gray-600 text-sm">${tip}</li>`).join('')}
+      </ul>
+    `;
+  }
+  
+  card.innerHTML = `
+    <h4 class="font-semibold text-gray-700 mb-2">${title}</h4>
+    <p class="text-sm text-gray-600">${advice.message}</p>
+    ${tipsList}
+  `;
+  
+  return card;
+}
+
+// 360度分析結果を保存する関数
+async function save360AnalysisResult() {
+  try {
+    // html2canvasを使用して結果セクションをキャプチャ
+    if (typeof html2canvas !== 'function') {
+      throw new Error('html2canvas がロードされていません');
+    }
+    
+    const canvas = await html2canvas(analysis360Section, {
+      backgroundColor: '#1a202c', // 背景色を設定
+      scale: 2, // 高解像度でキャプチャ
+      logging: false, // ログを無効化
+      useCORS: true // クロスオリジン画像を許可
+    });
+    
+    // キャンバスをデータURLに変換
+    const dataUrl = canvas.toDataURL('image/png');
+    
+    // ダウンロードリンクを作成
+    const link = document.createElement('a');
+    link.download = `yoga-ai-360-analysis-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
+    link.href = dataUrl;
+    link.click();
+    
+  } catch (error) {
+    console.error('360度分析結果の保存中にエラーが発生しました:', error);
     alert(`結果の保存に失敗しました: ${error.message}`);
   }
 }
