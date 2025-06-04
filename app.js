@@ -1,18 +1,37 @@
 // YogaAI Posture Analyzer - Main Application
 
 // DOM Elements
-const videoElement = document.getElementById('webcam');
-const canvasElement = document.getElementById('output-canvas');
-const canvasCtx = canvasElement.getContext('2d');
-const loadingIndicator = document.getElementById('loading-indicator');
-const catBackScoreElement = document.getElementById('cat-back-score');
-const scoreBarElement = document.getElementById('score-bar');
-const neckAngleElement = document.getElementById('neck-angle');
-const shoulderAngleElement = document.getElementById('shoulder-angle');
-const spineCurveElement = document.getElementById('spine-curve');
-const fpsElement = document.getElementById('fps');
-const improvementSection = document.getElementById('improvement-section');
-const poseSuggestions = document.getElementById('pose-suggestions');
+let videoElement;
+let canvasElement;
+let canvasCtx;
+let loadingIndicator;
+let catBackScoreElement;
+let scoreBarElement;
+let neckAngleElement;
+let shoulderAngleElement;
+let spineCurveElement;
+let fpsElement;
+let improvementSection;
+let poseSuggestions;
+
+// Wait for DOM to be fully loaded before accessing elements
+document.addEventListener('DOMContentLoaded', () => {
+  videoElement = document.getElementById('webcam');
+  canvasElement = document.getElementById('output-canvas');
+  canvasCtx = canvasElement.getContext('2d');
+  loadingIndicator = document.getElementById('loading-indicator');
+  catBackScoreElement = document.getElementById('cat-back-score');
+  scoreBarElement = document.getElementById('score-bar');
+  neckAngleElement = document.getElementById('neck-angle');
+  shoulderAngleElement = document.getElementById('shoulder-angle');
+  spineCurveElement = document.getElementById('spine-curve');
+  fpsElement = document.getElementById('fps');
+  improvementSection = document.getElementById('improvement-section');
+  poseSuggestions = document.getElementById('pose-suggestions');
+  
+  // Initialize the application after DOM is loaded
+  init();
+});
 
 // Pose improvement suggestions
 const improvementPoses = [
@@ -44,88 +63,180 @@ let catBackScore = 0;
 
 // Initialize the application
 async function init() {
+  console.log('Initializing application...');
+  
   // Set up canvas size to match video
-  canvasElement.width = videoElement.width;
-  canvasElement.height = videoElement.height;
-
-  // Initialize Mediapipe Pose
-  pose = new Pose({
-    locateFile: (file) => {
-      return `https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/${file}`;
-    }
-  });
-
-  pose.setOptions({
-    modelComplexity: 1,
-    smoothLandmarks: true,
-    minDetectionConfidence: 0.5,
-    minTrackingConfidence: 0.5
-  });
-
-  pose.onResults(onResults);
-
-  // Initialize camera
-  camera = new Camera(videoElement, {
-    onFrame: async () => {
-      await pose.send({image: videoElement});
-    },
-    width: 640,
-    height: 480
-  });
+  canvasElement.width = videoElement.clientWidth || 640;
+  canvasElement.height = videoElement.clientHeight || 480;
 
   try {
+    // Check if browser supports getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Browser does not support getUserMedia API');
+    }
+    
+    // Check for available devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    
+    if (videoDevices.length === 0) {
+      throw new Error('No video devices found');
+    }
+    
+    console.log(`Found ${videoDevices.length} video devices`);
+    
+    // Get user media directly first to ensure permissions
+    const constraints = {
+      video: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        facingMode: 'user'
+      }
+    };
+    
+    // Try to get user media directly first
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    videoElement.srcObject = stream;
+    
+    // Wait for video to be ready
+    await new Promise((resolve) => {
+      videoElement.onloadedmetadata = () => {
+        videoElement.play();
+        resolve();
+      };
+    });
+    
+    console.log('Video stream initialized');
+    
+    // Initialize Mediapipe Pose
+    pose = new Pose({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+      }
+    });
+
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+      selfieMode: true
+    });
+
+    pose.onResults(onResults);
+    
+    console.log('Pose model initialized');
+
+    // Initialize camera with the stream we already have
+    camera = new Camera(videoElement, {
+      onFrame: async () => {
+        try {
+          if (pose) {
+            await pose.send({image: videoElement});
+          }
+        } catch (err) {
+          console.error('Error in pose processing:', err);
+        }
+      },
+      width: 640,
+      height: 480
+    });
+
     await camera.start();
+    console.log('Camera started successfully');
     loadingIndicator.style.display = 'none';
+    
   } catch (error) {
-    console.error('Failed to start camera:', error);
-    loadingIndicator.innerHTML = '<p class="text-red-500">カメラの起動に失敗しました。<br>カメラへのアクセスを許可してください。</p>';
+    console.error('Failed to initialize:', error);
+    loadingIndicator.innerHTML = `
+      <div class="text-center">
+        <p class="text-red-500 font-bold mb-2">カメラの起動に失敗しました</p>
+        <p class="text-white mb-4">エラー: ${error.message}</p>
+        <p class="text-white mb-4">以下の点を確認してください：</p>
+        <ul class="text-white text-left list-disc pl-8 mb-4">
+          <li>カメラへのアクセスを許可していますか？</li>
+          <li>別のアプリがカメラを使用していませんか？</li>
+          <li>HTTPSで接続していますか？（モバイルデバイスではHTTPSが必要です）</li>
+          <li>プライバシー設定でカメラへのアクセスが許可されていますか？</li>
+        </ul>
+        <button id="retry-camera" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+          再試行する
+        </button>
+      </div>
+    `;
+    
+    // Add retry button functionality
+    document.getElementById('retry-camera')?.addEventListener('click', async () => {
+      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ再初期化中...</p></div>';
+      try {
+        // Try initialization again
+        init();
+      } catch (err) {
+        console.error('Retry failed:', err);
+        loadingIndicator.innerHTML = '<p class="text-red-500">カメラの起動に再度失敗しました。<br>ページを再読み込みしてお試しください。</p>';
+      }
+    });
   }
 
   // Handle window resize
   window.addEventListener('resize', () => {
-    canvasElement.width = videoElement.clientWidth;
-    canvasElement.height = videoElement.clientHeight;
+    if (canvasElement && videoElement) {
+      canvasElement.width = videoElement.clientWidth;
+      canvasElement.height = videoElement.clientHeight;
+    }
   });
 
   // Initial resize
-  canvasElement.width = videoElement.clientWidth;
-  canvasElement.height = videoElement.clientHeight;
+  if (canvasElement && videoElement) {
+    canvasElement.width = videoElement.clientWidth;
+    canvasElement.height = videoElement.clientHeight;
+  }
 }
 
 // Process pose detection results
 function onResults(results) {
-  // Calculate FPS
-  const now = performance.now();
-  frameCount++;
+  if (!canvasCtx || !canvasElement || !fpsElement) return;
   
-  if (now - lastFrameTime >= 1000) {
-    fps = Math.round(frameCount * 1000 / (now - lastFrameTime));
-    fpsElement.textContent = `${fps} FPS`;
-    frameCount = 0;
-    lastFrameTime = now;
-  }
+  try {
+    // Calculate FPS
+    const now = performance.now();
+    frameCount++;
+    
+    if (now - lastFrameTime >= 1000) {
+      fps = Math.round(frameCount * 1000 / (now - lastFrameTime));
+      fpsElement.textContent = `${fps} FPS`;
+      frameCount = 0;
+      lastFrameTime = now;
+    }
 
-  // Clear canvas
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    // Clear canvas
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-  // Draw the pose landmarks
-  if (results.poseLandmarks) {
-    poseData = results.poseLandmarks;
-    
-    // Draw the pose skeleton
-    canvasCtx.save();
-    canvasCtx.drawImage(
-      results.image, 0, 0, canvasElement.width, canvasElement.height);
-    
-    // Draw connectors and landmarks
-    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
-      {color: '#00FF00', lineWidth: 2});
-    drawLandmarks(canvasCtx, results.poseLandmarks,
-      {color: '#FF0000', lineWidth: 1, radius: 3});
-    canvasCtx.restore();
-    
-    // Analyze posture
-    analyzePosture(results.poseLandmarks);
+    // Draw the pose landmarks
+    if (results.poseLandmarks) {
+      poseData = results.poseLandmarks;
+      
+      // Draw the pose skeleton
+      canvasCtx.save();
+      canvasCtx.drawImage(
+        results.image, 0, 0, canvasElement.width, canvasElement.height);
+      
+      // Draw connectors and landmarks
+      if (window.drawConnectors && window.POSE_CONNECTIONS) {
+        drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
+          {color: '#00FF00', lineWidth: 2});
+        drawLandmarks(canvasCtx, results.poseLandmarks,
+          {color: '#FF0000', lineWidth: 1, radius: 3});
+      } else {
+        console.warn('drawConnectors or POSE_CONNECTIONS not available');
+      }
+      canvasCtx.restore();
+      
+      // Analyze posture
+      analyzePosture(results.poseLandmarks);
+    }
+  } catch (error) {
+    console.error('Error in onResults:', error);
   }
 }
 
@@ -261,5 +372,4 @@ function updatePoseSuggestions() {
   });
 }
 
-// Start the application when the page loads
-window.addEventListener('DOMContentLoaded', init);
+// The application is now initialized in the DOMContentLoaded event at the top of the file
