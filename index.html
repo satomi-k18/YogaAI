@@ -35,19 +35,12 @@
                             <p class="mt-2">カメラ初期化中...</p>
                         </div>
                     </div>
-                    <div class="absolute bottom-4 right-4 flex space-x-2">
-                        <button id="capture-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            写真撮影
-                        </button>
+                    <div class="absolute bottom-4 right-4">
                         <button id="analyze-360-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                             </svg>
-                            360度分析
+                            姿勢分析開始
                         </button>
                     </div>
                 </div>
@@ -88,70 +81,55 @@
                     </div>
                 </div>
 
-                <!-- 改善提案 -->
-                <div id="improvement-section" class="bg-white rounded-lg shadow-md p-6 hidden">
-                    <h2 class="text-xl font-semibold mb-4 text-indigo-600">改善ポーズの提案</h2>
-                    <p class="text-gray-700 mb-4">姿勢改善のために以下のポーズを試してみましょう:</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="pose-suggestions">
-                        <!-- ポーズカードがここに動的に挿入されます -->
+                <!-- 詳細アドバイス -->
+                <div id="detailed-advice-section" class="bg-white rounded-lg shadow-md p-6 hidden">
+                    <h2 class="text-xl font-semibold mb-4 text-indigo-600">詳細な姿勢アドバイス</h2>
+                    <p class="text-gray-700 mb-4">より詳細な分析結果を見るには「姿勢分析開始」ボタンをクリックしてください</p>
+                    <div id="detailed-advice-content">
+                        <!-- 詳細アドバイスがここに動的に挿入されます -->
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- 360度分析セクション -->
+        <!-- 四方向分析セクション -->
         <div id="analysis-360-section" class="mt-12 hidden">
-            <h2 class="text-2xl font-bold text-indigo-700 mb-6 text-center">360度姿勢分析</h2>
+            <h2 class="text-2xl font-bold text-indigo-700 mb-6 text-center">四方向姿勢分析</h2>
             
             <!-- 分析中の指示表示 -->
             <div id="analysis-instruction" class="bg-white rounded-lg shadow-md p-6 mb-8 text-center">
-                <div id="position-indicator" class="text-2xl font-bold text-indigo-700 mb-4">正面を向いてください</div>
-                <div class="flex justify-center mb-4">
-                    <div class="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center text-white text-2xl font-bold" id="countdown">10</div>
-                </div>
-                <div class="flex justify-center space-x-8 mb-6">
-                    <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center mb-2 mx-auto position-step active-position">
-                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
+                <h3 class="text-xl font-semibold mb-4 text-indigo-600">現在のポジション</h3>
+                <div id="position-indicator" class="text-2xl font-bold mb-6">正面</div>
+                
+                <div class="flex justify-center mb-8">
+                    <div class="flex space-x-4">
+                        <div class="position-step active" data-position="0">
+                            <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">1</div>
+                            <div class="text-sm mt-1">正面</div>
                         </div>
-                        <div class="text-xs text-gray-600">正面</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2 mx-auto position-step">
-                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                            </svg>
+                        <div class="position-step" data-position="1">
+                            <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">2</div>
+                            <div class="text-sm mt-1">右側面</div>
                         </div>
-                        <div class="text-xs text-gray-600">右側面</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2 mx-auto position-step">
-                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-                            </svg>
+                        <div class="position-step" data-position="2">
+                            <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">3</div>
+                            <div class="text-sm mt-1">背面</div>
                         </div>
-                        <div class="text-xs text-gray-600">背面</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2 mx-auto position-step">
-                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                            </svg>
+                        <div class="position-step" data-position="3">
+                            <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-bold">4</div>
+                            <div class="text-sm mt-1">左側面</div>
                         </div>
-                        <div class="text-xs text-gray-600">左側面</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-2 mx-auto position-step">
-                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div class="text-xs text-gray-600">完了</div>
                     </div>
                 </div>
-                <p class="text-gray-600">指示に従って姿勢を変えてください。カウントダウンが終わると自動的に次のポジションに移ります。</p>
+                
+                <div class="mb-6">
+                    <p class="text-lg mb-2">カウントダウン: <span id="countdown" class="font-bold text-xl">10</span>秒</p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="countdown-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <p class="text-gray-700">カメラに向かって上記のポジションを取ってください。各ポジションで10秒間の分析を行います。</p>
             </div>
             
             <!-- 分析結果表示 -->
@@ -210,9 +188,28 @@
                 
                 <!-- 詳細アドバイス -->
                 <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">詳細アドバイス</h3>
-                    <div id="detailed-advice" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- 詳細アドバイスがここに表示されます -->
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">詳細姿勢アドバイス</h3>
+                    <div id="detailed-advice" class="space-y-6">
+                        <!-- 詳細アドバイスセクション -->
+                        <div id="ribcage-advice" class="bg-indigo-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-bold text-indigo-700 mb-2">◆肋骨</h4>
+                            <p class="text-gray-800" id="ribcage-advice-text"></p>
+                        </div>
+                        
+                        <div id="pelvis-advice" class="bg-indigo-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-bold text-indigo-700 mb-2">◆お尻スイッチ・仙骨スイッチ</h4>
+                            <p class="text-gray-800" id="pelvis-advice-text"></p>
+                        </div>
+                        
+                        <div id="shoulder-advice" class="bg-indigo-50 p-4 rounded-lg mb-4">
+                            <h4 class="font-bold text-indigo-700 mb-2">◆肩甲・背中</h4>
+                            <p class="text-gray-800" id="shoulder-advice-text"></p>
+                        </div>
+                        
+                        <div id="neck-advice" class="bg-indigo-50 p-4 rounded-lg">
+                            <h4 class="font-bold text-indigo-700 mb-2">◆首・頭の位置</h4>
+                            <p class="text-gray-800" id="neck-advice-text"></p>
+                        </div>
                     </div>
                 </div>
                 

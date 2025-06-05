@@ -65,7 +65,7 @@ let currentAdvice = null;
 let isAnalyzing360 = false;
 let currentPosition = 0;
 let countdownInterval;
-let countdownValue = 10;
+let countdownValue = 8;
 let analysisPositions = ['正面', '右側面', '背面', '左側面', '正面（確認）'];
 let positionScores = {
   front: 0,
@@ -98,23 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
   shoulderAngleElement = document.getElementById('shoulder-angle');
   spineCurveElement = document.getElementById('spine-curve');
   fpsElement = document.getElementById('fps');
-  improvementSection = document.getElementById('improvement-section');
-  poseSuggestions = document.getElementById('pose-suggestions');
-  improvementTitle = document.querySelector('#improvement-section h2');
   
-  // 写真撮影関連の要素
-  captureBtn = document.getElementById('capture-btn');
-  resultsSection = document.getElementById('results-section');
-  capturedImage = document.getElementById('captured-image');
-  captureDate = document.getElementById('capture-date');
-  resultScore = document.getElementById('result-score');
-  resultScoreBar = document.getElementById('result-score-bar');
-  resultNeckAngle = document.getElementById('result-neck-angle');
-  resultShoulderAngle = document.getElementById('result-shoulder-angle');
-  resultSpineCurve = document.getElementById('result-spine-curve');
-  resultAdvice = document.getElementById('result-advice');
-  saveResultBtn = document.getElementById('save-result-btn');
-  newCaptureBtn = document.getElementById('new-capture-btn');
+  // 詳細アドバイスセクション
+  detailedAdviceSection = document.getElementById('detailed-advice-section');
+  ribcageAdviceText = document.getElementById('ribcage-advice-text');
+  pelvisAdviceText = document.getElementById('pelvis-advice-text');
+  shoulderAdviceText = document.getElementById('shoulder-advice-text');
+  neckAdviceText = document.getElementById('neck-advice-text');
   
   // 360度分析用のDOM要素初期化
   analyze360Btn = document.getElementById('analyze-360-btn');
@@ -140,20 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
   saveAnalysisBtn = document.getElementById('save-analysis-btn');
   
   // イベントリスナーを設定
-  if (captureBtn) {
-    captureBtn.addEventListener('click', captureImage);
-  }
-  if (saveResultBtn) {
-    saveResultBtn.addEventListener('click', saveResult);
-  }
-  if (newCaptureBtn) {
-    newCaptureBtn.addEventListener('click', () => {
-      resultsSection.classList.add('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-  
-  // 360度分析ボタンのイベントリスナー
+  // 姿勢分析ボタンのイベントリスナー
   if (analyze360Btn) {
     analyze360Btn.addEventListener('click', start360Analysis);
   }
@@ -200,33 +177,30 @@ const postureAdvice = [
     maxScore: 40,
     title: "要注意",
     message: "姿勢が大きく崩れています。すぐに姿勢を正し、定期的に休憩を取りましょう。",
-    tips: [
-      "モニターの高さを目線と同じかやや下になるよう調整してください",
-      "椅子に深く腰掛け、背もたれにしっかり背中をつけましょう",
-      "30分ごとに立ち上がって軽くストレッチをしましょう"
-    ]
+    ribcage: "肋骨が前に出ている状態です。胸を開き、肋骨を下げるように意識しましょう。吸うときに胸を前に押し出さず、横に広げるようにしましょう。",
+    pelvis: "骨盤が後方に傾いています。お尻スイッチを意識して、下腹部を軽く引き置き、骨盤を中立の位置に整えましょう。仙骨を床に向かって押し付けるように意識しましょう。",
+    shoulder: "肩が前に巻き、背中が丸まっています。肩甲骨を背中の中心に寄せるようにして、背中を伸ばしましょう。肩甲骨を下げ、背中の上部を広げるイメージです。",
+    neck: "首が前に出ています。頭の重みで首の筋肉に負担がかかっています。頭を背骨の上に乗せるように、あごを引いて首を長く保ちましょう。"
   },
   {
     minScore: 41,
     maxScore: 70,
     title: "改善の余地あり",
     message: "姿勢に改善の余地があります。意識して姿勢を正しましょう。",
-    tips: [
-      "肩の力を抜き、背筋を伸ばすよう意識してください",
-      "あごを引き、首を長く保つようにしましょう",
-      "1時間に一度は姿勢チェックを行いましょう"
-    ]
+    ribcage: "肋骨がやや前に出ています。吸うときは胸を左右に広げるように意識し、肋骨を下げて自然な位置に整えましょう。胸を引き上げすぎないように注意しましょう。",
+    pelvis: "骨盤の傾きがやや見られます。お尻スイッチを入れて、骨盤を中立に保ちましょう。立っているときは体重が足の真ん中にかかるようにして、座っているときは坐骨の上にしっかり体重を乗せましょう。",
+    shoulder: "肩がやや前に出ています。肩甲骨を背中の中心に寄せるように意識して、背中を自然に伸ばしましょう。肩を軽く後ろに引き、胸を開くようにしましょう。",
+    neck: "首がやや前に出ています。頭を背骨の上にバランスよく乗せるように、あごを軽く引き、首の後ろを長く保つようにしましょう。"
   },
   {
     minScore: 71,
     maxScore: 100,
     title: "良好",
     message: "姿勢は良好です。このまま維持しましょう。",
-    tips: [
-      "定期的なストレッチで柔軟性を維持しましょう",
-      "姿勢の良さを保つために背筋を鍛える運動を取り入れましょう",
-      "長時間同じ姿勢でいないよう、適度に動くことを心がけましょう"
-    ]
+    ribcage: "肋骨の位置が良好です。吸うときは胸を左右に広げるようにして、自然な姿勢を維持しましょう。肋骨を下げた状態で、胸を開いた姿勢を保ちましょう。",
+    pelvis: "骨盤の位置が良好です。お尻スイッチと仙骨スイッチがうまく機能しています。骨盤を中立に保ち、下腹部の軽い締め付けを維持しましょう。",
+    shoulder: "肩の位置が良好です。肩甲骨が背中の中心にうまく位置しています。肩の力を抜き、自然な姿勢を維持しましょう。肩甲骨を下げ、背中を広げるようにしましょう。",
+    neck: "首の位置が良好です。頭が背骨の上にバランスよく乗っています。あごを軽く引き、首の後ろを長く保つようにして、この良い姿勢を維持しましょう。"
   }
 ];
 
@@ -741,7 +715,7 @@ async function start360Analysis() {
   // 変数の初期化
   isAnalyzing360 = true;
   currentPosition = 0;
-  countdownValue = 10;
+  countdownValue = 8;
   positionScores = { front: 0, right: 0, back: 0, left: 0 };
   positionLandmarks = { front: null, right: null, back: null, left: null };
   positionAdvice = { front: null, right: null, back: null, left: null };
@@ -791,20 +765,32 @@ function updatePositionUI() {
   positionIndicator.textContent = `${analysisPositions[currentPosition]}を向いてください`;
   countdownElement.textContent = countdownValue;
   
+  // カウントダウンバーの更新
+  const countdownBar = document.getElementById('countdown-bar');
+  if (countdownBar) {
+    countdownBar.style.width = `${(countdownValue / 8) * 100}%`;
+  }
+  
   // ステップインジケータの更新
   positionSteps.forEach((step, index) => {
     if (index === currentPosition) {
-      step.classList.add('bg-indigo-100');
-      step.classList.remove('bg-gray-100');
-      step.querySelector('svg').classList.add('text-indigo-600');
-      step.querySelector('svg').classList.remove('text-gray-400');
-      step.classList.add('active-position');
+      step.querySelector('div').classList.remove('bg-gray-300');
+      step.querySelector('div').classList.add('bg-indigo-600');
+      step.querySelector('div').classList.remove('text-gray-600');
+      step.querySelector('div').classList.add('text-white');
+    } else if (index < currentPosition) {
+      // 完了したステップ
+      step.querySelector('div').classList.remove('bg-gray-300');
+      step.querySelector('div').classList.add('bg-green-500');
+      step.querySelector('div').classList.remove('text-gray-600');
+      step.querySelector('div').classList.add('text-white');
     } else {
-      step.classList.remove('bg-indigo-100');
-      step.classList.add('bg-gray-100');
-      step.querySelector('svg').classList.remove('text-indigo-600');
-      step.querySelector('svg').classList.add('text-gray-400');
-      step.classList.remove('active-position');
+      // 未完了のステップ
+      step.querySelector('div').classList.add('bg-gray-300');
+      step.querySelector('div').classList.remove('bg-indigo-600');
+      step.querySelector('div').classList.remove('bg-green-500');
+      step.querySelector('div').classList.add('text-gray-600');
+      step.querySelector('div').classList.remove('text-white');
     }
   });
 }
@@ -856,15 +842,14 @@ function capturePositionData() {
       positionLandmarks.left = [...currentLandmarks];
       positionScores.left = catBackScore;
       positionAdvice.left = currentAdvice;
-      break;
-    case 4: // 完了
+      // 全ての方向の分析が完了したので分析結果を表示
       finishAnalysis();
       return;
   }
   
   // 次のポジションへ
   currentPosition++;
-  countdownValue = 10;
+  countdownValue = 8;
   updatePositionUI();
   startCountdown();
 }
@@ -890,6 +875,9 @@ function finishAnalysis() {
   
   // UI更新
   updateAnalysisResultUI(totalScore);
+  
+  // 結果セクションまでスクロール
+  analysisResults.scrollIntoView({ behavior: 'smooth' });
 }
 
 // 分析結果のUIを更新する関数
@@ -931,83 +919,24 @@ function updateAnalysisResultUI(totalScore) {
     <p>${advice.message}</p>
   `;
   
-  // 詳細アドバイス
-  detailedAdviceElement.innerHTML = '';
-  
-  // 正面のアドバイス
-  const frontAdviceCard = createAdviceCard('正面', positionAdvice.front);
-  detailedAdviceElement.appendChild(frontAdviceCard);
-  
-  // 側面のアドバイス
-  const sideAdviceCard = createAdviceCard('側面', positionAdvice.right);
-  detailedAdviceElement.appendChild(sideAdviceCard);
-  
-  // 背面のアドバイス
-  const backAdviceCard = createAdviceCard('背面', positionAdvice.back);
-  detailedAdviceElement.appendChild(backAdviceCard);
-  
-  // 左側面のアドバイス
-  const leftAdviceCard = createAdviceCard('左側面', positionAdvice.left);
-  detailedAdviceElement.appendChild(leftAdviceCard);
-}
-
-// アドバイスカードを作成する関数
-function createAdviceCard(title, advice) {
-  const card = document.createElement('div');
-  card.className = 'bg-white rounded-lg shadow-sm p-4 border border-gray-100';
-  
-  if (!advice) {
-    card.innerHTML = `
-      <h4 class="font-semibold text-gray-700 mb-2">${title}</h4>
-      <p class="text-gray-500">データがありません</p>
-    `;
-    return card;
+  // 詳細アドバイスの設定
+  // 肋骨のアドバイス
+  if (ribcageAdviceText) {
+    ribcageAdviceText.textContent = advice.ribcage || "肋骨の位置に関するデータが取得できませんでした";
   }
   
-  let tipsList = '';
-  if (advice.tips && advice.tips.length > 0) {
-    tipsList = `
-      <ul class="list-disc pl-5 mt-2">
-        ${advice.tips.map(tip => `<li class="text-gray-600 text-sm">${tip}</li>`).join('')}
-      </ul>
-    `;
+  // 骨盤のアドバイス
+  if (pelvisAdviceText) {
+    pelvisAdviceText.textContent = advice.pelvis || "骨盤の位置に関するデータが取得できませんでした";
   }
   
-  card.innerHTML = `
-    <h4 class="font-semibold text-gray-700 mb-2">${title}</h4>
-    <p class="text-sm text-gray-600">${advice.message}</p>
-    ${tipsList}
-  `;
+  // 肩甲骨・背中のアドバイス
+  if (shoulderAdviceText) {
+    shoulderAdviceText.textContent = advice.shoulder || "肩甲骨と背中の位置に関するデータが取得できませんでした";
+  }
   
-  return card;
-}
-
-// 360度分析結果を保存する関数
-async function save360AnalysisResult() {
-  try {
-    // html2canvasを使用して結果セクションをキャプチャ
-    if (typeof html2canvas !== 'function') {
-      throw new Error('html2canvas がロードされていません');
-    }
-    
-    const canvas = await html2canvas(analysis360Section, {
-      backgroundColor: '#1a202c', // 背景色を設定
-      scale: 2, // 高解像度でキャプチャ
-      logging: false, // ログを無効化
-      useCORS: true // クロスオリジン画像を許可
-    });
-    
-    // キャンバスをデータURLに変換
-    const dataUrl = canvas.toDataURL('image/png');
-    
-    // ダウンロードリンクを作成
-    const link = document.createElement('a');
-    link.download = `yoga-ai-360-analysis-${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.png`;
-    link.href = dataUrl;
-    link.click();
-    
-  } catch (error) {
-    console.error('360度分析結果の保存中にエラーが発生しました:', error);
-    alert(`結果の保存に失敗しました: ${error.message}`);
+  // 首のアドバイス
+  if (neckAdviceText) {
+    neckAdviceText.textContent = advice.neck || "首の位置に関するデータが取得できませんでした";
   }
 }
