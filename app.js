@@ -241,6 +241,15 @@ async function initCamera() {
         videoElement.play();
         resolve();
       };
+      
+      // タイムアウト処理を追加
+      setTimeout(() => {
+        if (videoElement.readyState >= 2) { // HAVE_CURRENT_DATA以上
+          console.log('Video ready state reached via timeout');
+          videoElement.play().catch(e => console.error('Play failed:', e));
+          resolve();
+        }
+      }, 3000); // 3秒のタイムアウト
     });
     
     console.log('Video stream initialized');
@@ -305,16 +314,10 @@ async function initCamera() {
       </div>
     `;
     
-    // Add retry button functionality
-    document.getElementById('retry-camera')?.addEventListener('click', async () => {
-      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ再初期化中...</p></div>';
-      try {
-        // Try initialization again
-        initCamera();
-      } catch (err) {
-        console.error('Retry failed:', err);
-        loadingIndicator.innerHTML = '<p class="text-red-500">カメラの起動に再度失敗しました。<br>ページを再読み込みしてお試しください。</p>';
-      }
+    // 再試行ボタンの機能を追加
+    document.getElementById('retry-camera').addEventListener('click', () => {
+      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ初期化中...</p></div>';
+      initCamera();
     });
   }
 
