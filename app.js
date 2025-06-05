@@ -141,8 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
     saveAnalysisBtn.addEventListener('click', save360AnalysisResult);
   }
   
-  // Initialize the application after DOM is loaded
-  initCamera();
+  // カメラは姿勢分析開始ボタンを押したときに初期化する
+  // initCamera() の呼び出しを削除
 });
 
 // Pose improvement suggestions
@@ -723,16 +723,16 @@ async function start360Analysis() {
   positionLandmarks = { front: null, right: null, back: null, left: null };
   positionAdvice = { front: null, right: null, back: null, left: null };
   
-  // カメラが停止していれば再起動
-  if (camera && !camera.isRunning) {
+  // カメラの初期化または再起動
+  if (!camera) {
     try {
       // ローディング表示
       loadingIndicator.style.display = 'block';
-      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ再起動中...</p></div>';
+      loadingIndicator.innerHTML = '<div class="text-center"><div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div><p class="mt-2">カメラ初期化中...</p></div>';
       
-      // カメラ再起動
-      await camera.start();
-      console.log('カメラ再起動成功');
+      // カメラ初期化
+      await initCamera();
+      console.log('カメラ初期化成功');
       loadingIndicator.style.display = 'none';
     } catch (error) {
       console.error('カメラ再起動失敗:', error);
