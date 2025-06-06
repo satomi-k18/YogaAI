@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>姿勢チェッカー</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>姿勢チェッカー</h1>
+        
+        <div class="video-container">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output-canvas"></canvas>
+            <div id="timer-display" class="timer-display">8</div>
+            <div id="loading-message" class="loading-message">モデルを読み込み中...</div>
+        </div>
+        
+        <div id="start-section" class="control-section">
+            <button id="start-button" class="primary-button">計測開始</button>
+        </div>
+        
+        <div id="result-section" class="result-section hidden">
+            <h2>姿勢分析結果</h2>
+            <div class="score-container">
+                <div class="score-circle">
+                    <span id="posture-score">0</span>
+                </div>
+                <p>姿勢スコア</p>
+            </div>
+            <div id="posture-comment" class="posture-comment">
+                計測を開始してください
+            </div>
+            <button id="retry-button" class="primary-button">再計測</button>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
